@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.5
-  sensors_plus: ^2.0.2
+  sensors_plus: ^4.0.2
   permission_handler: ^10.2.0
   geolocator: ^9.0.2
   shared_preferences: ^2.0.17
