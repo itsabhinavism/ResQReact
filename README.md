@@ -5,7 +5,8 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
 [![Flutter Version](https://img.shields.io/badge/Flutter-%3E%3D2.17.0-blue)](https://flutter.dev)
-[![GitHub issues](https://img.shields.io/github/issues/YourUsername/ResQReact)](https://github.com/itsabhinavism/ResQReact/issues) [![GitHub stars](https://img.shields.io/github/stars/itsabhinavism/ResQReact)](https://github.com/itsabhinavism/ResQReact/stargazers) ---
+[![GitHub issues](https://img.shields.io/github/issues/YourUsername/ResQReact)](https://github.com/itsabhinavism/ResQReact/issues) 
+[![GitHub stars](https://img.shields.io/github/stars/itsabhinavism/ResQReact)](https://github.com/itsabhinavism/ResQReact/stargazers)
 
 ResQReact monitors device sensor data to detect potential falls and can notify pre-configured emergency contacts with the user's location, providing peace of mind.
 
