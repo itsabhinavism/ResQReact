@@ -74,6 +74,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 [Specify Your License Here - e.g., MIT License]
 
----
 
-*This README was generated based on the project's code and configuration files.* [cite: 1, 2, 3]
