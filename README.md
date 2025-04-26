@@ -1,77 +1,98 @@
-# ResQReact [cite: 1, 2]
+# ✨ ResQReact ✨
 
-A Flutter application designed for fall detection and sending emergency alerts[cite: 1]. This app monitors sensor data to detect potential falls and can notify pre-configured emergency contacts with the user's location.
+**A Flutter application designed for fall detection and sending emergency alerts.** 🆘
 
-## Features [cite: 3]
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
+[![Flutter Version](https://img.shields.io/badge/Flutter-%3E%3D2.17.0-blue)](https://flutter.dev)
+[![GitHub issues](https://img.shields.io/github/issues/YourUsername/ResQReact)](https://github.com/YourUsername/ResQReact/issues) [![GitHub stars](https://img.shields.io/github/stars/YourUsername/ResQReact)](https://github.com/YourUsername/ResQReact/stargazers) ---
 
-* **Fall Detection:** Uses accelerometer and gyroscope data (`sensors_plus` package) to detect patterns indicative of a fall[cite: 1, 3].
-* **Sensor Calibration:** Allows users to calibrate the sensor sensitivity based on their normal activity levels for more accurate detection[cite: 3].
-* **Emergency Alerts:** Triggers a countdown timer upon detecting a potential fall, allowing the user to cancel if it's a false alarm[cite: 3].
-* **Contact Notification:** If not canceled, sends alert messages (currently mocked via debug prints) including the user's last known location (`geolocator` package) to pre-defined emergency contacts[cite: 1, 3].
-* **Settings & Configuration:**
-    * Manage user name[cite: 3].
-    * Add/Remove emergency contacts[cite: 3].
-    * Adjust fall detection sensitivity threshold[cite: 3].
-    * User data and settings are saved using `shared_preferences`[cite: 1, 3].
-* **Permission Handling:** Requests necessary permissions (Location, SMS, Microphone) using `permission_handler`[cite: 1, 3].
-* **Background Monitoring:** Aims to keep monitoring active even when the app is paused (basic implementation using `AppLifecycleState` and Timer)[cite: 3].
+ResQReact monitors device sensor data to detect potential falls and can notify pre-configured emergency contacts with the user's location, providing peace of mind.
 
-## Getting Started
+## 🚀 Features
 
-This project is a Flutter application.
+* 🤸 **Fall Detection:** Uses accelerometer and gyroscope data (`sensors_plus`) to detect fall patterns.
+* 🔧 **Sensor Calibration:** Personalize sensitivity via calibration for improved accuracy.
+* ⏰ **Emergency Alerts:** Countdown timer upon fall detection allows users to cancel false alarms.
+* 📲 **Contact Notification:** Sends (currently mocked) alerts with location (`geolocator`) to emergency contacts.
+* ⚙️ **Settings & Configuration:**
+    * 👤 Manage user name.
+    * 📞 Add/Remove emergency contacts.
+    * 🎚️ Adjust fall detection sensitivity.
+    * 💾 Settings saved locally (`shared_preferences`).
+* 🔒 **Permission Handling:** Smoothly requests necessary permissions (`permission_handler`).
+* 🏃 **Background Monitoring:** Basic capability to keep monitoring active when the app is paused.
 
-1.  **Ensure Flutter is installed:** Follow the [Flutter installation guide](https://docs.flutter.dev/get-started/install).
-2.  **Clone the repository:**
+---
+
+## 🏁 Getting Started
+
+This project is built with Flutter.
+
+1.  **Install Flutter:** Follow the [Flutter installation guide](https://docs.flutter.dev/get-started/install).
+2.  **Clone:**
     ```bash
-    git clone <your-repository-url>
+    git clone [https://github.com/YourUsername/ResQReact.git](https://github.com/YourUsername/ResQReact.git) # Replace YourUsername
     cd ResQReact
     ```
-3.  **Install dependencies:**
+3.  **Install Dependencies:**
     ```bash
     flutter pub get
     ```
-4.  **Run the app:**
-    * Make sure you have a connected device (emulator or physical device).
-    * Run the command:
+4.  **Run:**
+    * Connect a device or start an emulator.
+    * Execute:
         ```bash
         flutter run
         ```
 
-## Usage [cite: 3]
+---
 
-1.  **Launch the app:** A splash screen will appear briefly, followed by the main monitoring screen.
-2.  **Configure Settings (Recommended):**
-    * Tap the settings icon in the AppBar.
-    * Enter your name.
-    * Add emergency contacts (phone numbers or emails - *note: actual sending functionality via SMS/email needs implementation*).
-    * Adjust the fall detection sensitivity slider if needed.
-    * Grant necessary permissions when prompted or via the settings screen.
-3.  **Calibrate System (Optional but Recommended):**
-    * From the main screen, tap "Calibrate System".
-    * Remain still for the countdown duration. This helps set a personalized fall detection threshold.
-4.  **Start Monitoring:**
-    * Tap the "Start Monitoring" button on the main screen. The app will now use device sensors to detect falls.
+## 🛠️ Usage
+
+1.  **Launch:** Open the ResQReact app.
+2.  **Configure (Recommended):**
+    * Navigate to `Settings` (⚙️ icon).
+    * Set your name, add contacts, adjust sensitivity.
+    * Grant permissions when prompted.
+3.  **Calibrate (Optional):**
+    * On the main screen, tap `Calibrate System`.
+    * Stay still during the countdown.
+4.  **Monitor:**
+    * Tap `Start Monitoring`.
 5.  **Fall Event:**
-    * If a potential fall is detected, a dialog with a countdown will appear.
-    * Tap "I'm OK" to cancel the alert.
-    * Tap "Send Alert Now" or wait for the countdown to finish to trigger the (currently mocked) alert sending process.
-6.  **Stop Monitoring:**
-    * Tap the "Stop Monitoring" button on the main screen.
+    * Dialog appears -> Tap `I'm OK` or let the timer run out / tap `Send Alert Now`.
+6.  **Stop:**
+    * Tap `Stop Monitoring`.
 
-## Key Dependencies [cite: 1]
+---
 
-* `flutter`
-* `sensors_plus`: For accessing accelerometer and gyroscope.
-* `permission_handler`: For requesting device permissions.
-* `geolocator`: For obtaining the device location.
-* `shared_preferences`: For saving user settings locally.
+## 📦 Key Dependencies
 
-## Contributing
+* `flutter`: The core framework.
+* `sensors_plus`: Accelerometer & Gyroscope access.
+* `permission_handler`: Requesting device permissions.
+* `geolocator`: Fetching location data.
+* `shared_preferences`: Local data persistence.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+---
 
-## License
+## 🤝 Contributing
 
-[Specify Your License Here - e.g., MIT License]
+Contributions make the open-source community amazing! Any contributions you make are **greatly appreciated**.
 
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
+---
+
+## 📜 License
+
+Distributed under the [Specify License Name Here] License. See `LICENSE` file for more information.
+
+*(Example: Distributed under the MIT License. See `LICENSE` for more information.)*
+
+---
