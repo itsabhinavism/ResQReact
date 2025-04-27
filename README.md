@@ -92,8 +92,6 @@ Contributions make the open-source community amazing! Any contributions you make
 
 ## 📜 License
 
-Distributed under the [Specify License Name Here] License. See `LICENSE` file for more information.
-
-*(Example: Distributed under the MIT License. See `LICENSE` for more information.)*
+Distributed under the MIT License.
 
 ---
