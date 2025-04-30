@@ -26,29 +26,6 @@ ResQReact monitors device sensor data to detect potential falls and can notify p
 
 ---
 
-## 🏁 Getting Started
-
-This project is built with Flutter.
-
-1.  **Install Flutter:** Follow the [Flutter installation guide](https://docs.flutter.dev/get-started/install).
-2.  **Clone:**
-    ```bash
-    git clone [https://github.com/YourUsername/ResQReact.git](https://github.com/YourUsername/ResQReact.git) # Replace YourUsername
-    cd ResQReact
-    ```
-3.  **Install Dependencies:**
-    ```bash
-    flutter pub get
-    ```
-4.  **Run:**
-    * Connect a device or start an emulator.
-    * Execute:
-        ```bash
-        flutter run
-        ```
-
----
-
 ## 🛠️ Usage
 
 1.  **Launch:** Open the ResQReact app.
