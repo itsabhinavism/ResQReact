@@ -69,6 +69,10 @@ Contributions make the open-source community amazing! Any contributions you make
 
 ## 📜 License
 
-Distributed under the MIT License.
+This project is licensed under the **GNU GPLv3 License** - see the [LICENSE](LICENSE) file for details.  
+Any derivative work must be:
+- Open source
+- Licensed under GPLv3
+- Include original copyright notice
 
 ---
