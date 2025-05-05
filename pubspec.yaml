@@ -11,10 +11,19 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.5
   sensors_plus: ^4.0.2
-  permission_handler: ^10.2.0
-  geolocator: ^9.0.2
-  shared_preferences: ^2.0.17
-  # Removed flutter_local_notifications to fix the Linux plugin error
+  permission_handler: ^11.0.0
+  geolocator: ^10.0.0
+  shared_preferences: ^2.2.2
+  # Animation packages
+  flutter_animate: ^4.5.0
+  lottie: ^2.7.0
+  animate_do: ^3.3.0
+  # UI enhancement packages
+  google_fonts: ^6.1.0
+  flutter_svg: ^2.0.9
+  shimmer: ^3.0.0
+  # Added for Android compatibility
+  device_info_plus: ^9.1.1
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +34,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
+    - assets/animations/

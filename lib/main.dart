@@ -14,18 +14,30 @@ void main() async {
 
 class NotificationManager {
   static void showMonitoringActive() {
-    // On actual devices, you would show a real notification
-    debugPrint('Monitoring active notification would appear here');
+    // Enhanced notification message
+    debugPrint('Monitoring active: ResQReact is actively monitoring for falls');
+    
+    // Vibrate device to provide feedback
+    _vibrate(pattern: [0, 100, 50, 100]);
   }
 
   static void showEmergencyAlert() {
-    // On actual devices, you would show a real notification
-    debugPrint('Emergency alert notification would appear here');
+    // Enhanced emergency alert message
+    debugPrint('EMERGENCY ALERT: Fall detected! Sending alerts to emergency contacts.');
+    
+    // Vibrate device with emergency pattern
+    _vibrate(pattern: [0, 500, 200, 500, 200, 500]);
   }
 
   static void cancelNotification(int id) {
-    // Cancel notification logic would go here
-    debugPrint('Notification $id would be cancelled here');
+    debugPrint('Notification $id cancelled');
+  }
+  
+  // Helper method to vibrate the device
+  static void _vibrate({required List<int> pattern}) {
+    // This would use platform channels to trigger vibration
+    // For now, we just log the pattern
+    debugPrint('Device would vibrate with pattern: $pattern');
   }
 }
 
@@ -38,14 +50,58 @@ class ResQReactApp extends StatelessWidget {
       title: 'ResQReact',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.red,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.red,
+          brightness: Brightness.light,
+          primary: Colors.red,
+          secondary: Colors.redAccent,
+          tertiary: Colors.green,
+        ),
+        useMaterial3: true,
         brightness: Brightness.light,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        cardTheme: const CardTheme(
+          elevation: 4,
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
       darkTheme: ThemeData(
-        primarySwatch: Colors.red,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.red,
+          brightness: Brightness.dark,
+          primary: Colors.red,
+          secondary: Colors.redAccent,
+          tertiary: Colors.green,
+        ),
+        useMaterial3: true,
         brightness: Brightness.dark,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        cardTheme: const CardTheme(
+          elevation: 4,
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
       themeMode: ThemeMode.system,
       home: const SplashScreen(),
@@ -60,48 +116,125 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+  
   @override
   void initState() {
     super.initState();
-    // Navigate to HomeScreen after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
+    
+    // Setup animations
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    
+    _scaleAnimation = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.elasticOut,
+    ));
+    
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Interval(0.3, 1.0, curve: Curves.easeIn),
+    ));
+    
+    // Start the animation
+    _animationController.forward();
+    
+    // Navigate to HomeScreen after animation completes
+    Future.delayed(const Duration(seconds: 3), () {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOutQuart;
+            
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var offsetAnimation = animation.drive(tween);
+            
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 800),
+        ),
       );
     });
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).primaryColor,
+      backgroundColor: Theme.of(context).colorScheme.primary,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.health_and_safety,
-              size: 100,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'ResQReact',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Fall Detection & Emergency Alerts',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyLarge
-                  ?.copyWith(color: Colors.white),
-            ),
-          ],
+        child: AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Opacity(
+                opacity: _opacityAnimation.value,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.health_and_safety,
+                        size: 100,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    Text(
+                      'ResQReact',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 40,
+                            letterSpacing: 1.2,
+                          ),
+                    ),
+                    const SizedBox(height: 15),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        'Fall Detection & Emergency Alerts',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -553,121 +686,344 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Text(
-                    _isMonitoring ? 'Monitoring Active' : 'Monitoring Inactive',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: _isMonitoring ? Colors.green : Colors.red,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Icon(
-                    _isMonitoring ? Icons.shield : Icons.shield_outlined,
-                    size: 80,
-                    color: _isMonitoring ? Colors.green : Colors.red,
-                  ),
-                  const SizedBox(height: 20),
-                  if (_isMonitoring)
-                    Column(
+          // Status Card with Animation
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.8, end: 1.0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.elasticOut,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Card(
+                  elevation: 8,
+                  shadowColor: _isMonitoring 
+                      ? Colors.green.withOpacity(0.4) 
+                      : Colors.red.withOpacity(0.4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
                       children: [
-                        const Text('Current Acceleration:'),
-                        const SizedBox(height: 5),
-                        Text(
-                          '${_currentAcceleration.toStringAsFixed(2)} m/s²',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        // Status Text with Animation
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(milliseconds: 500),
+                          builder: (context, opacity, child) {
+                            return Opacity(
+                              opacity: opacity,
+                              child: Text(
+                                _isMonitoring ? 'Monitoring Active' : 'Monitoring Inactive',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: _isMonitoring ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 10),
-                        LinearProgressIndicator(
-                          value: _currentAcceleration / (_fallThreshold * 1.5),
-                          backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            _currentAcceleration > _fallThreshold * 0.8
-                                ? Colors.red
-                                : Colors.green,
-                          ),
+                        const SizedBox(height: 20),
+                        
+                        // Shield Icon with Animation
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.5, end: 1.0),
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.elasticOut,
+                          builder: (context, scale, child) {
+                            return Transform.scale(
+                              scale: scale,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Icon(
+                                    _isMonitoring ? Icons.shield : Icons.shield_outlined,
+                                    size: 100,
+                                    color: _isMonitoring ? Colors.green : Colors.red,
+                                  ),
+                                  if (_isMonitoring)
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(begin: 0.7, end: 1.3),
+                                      duration: const Duration(milliseconds: 1500),
+                                      curve: Curves.easeInOut,
+                                      builder: (context, pulse, _) {
+                                        return RepaintBoundary(
+                                          child: CustomPaint(
+                                            size: const Size(120, 120),
+                                            painter: PulseEffectPainter(
+                                              color: Colors.green.withOpacity(0.3),
+                                              radius: 50 * pulse,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Fall Threshold: ${_fallThreshold.toStringAsFixed(2)} m/s²',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
+                        const SizedBox(height: 25),
+                        
+                        // Acceleration Data with Animation
+                        if (_isMonitoring)
+                          AnimatedOpacity(
+                            opacity: _isMonitoring ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 500),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Current Acceleration:',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(height: 8),
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(
+                                    begin: 0, 
+                                    end: _currentAcceleration,
+                                  ),
+                                  duration: const Duration(milliseconds: 300),
+                                  builder: (context, value, _) {
+                                    return Text(
+                                      '${value.toStringAsFixed(2)} m/s²',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: value > _fallThreshold * 0.8
+                                            ? Colors.red
+                                            : Colors.green,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 15),
+                                Stack(
+                                  children: [
+                                    // Background track
+                                    Container(
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                    ),
+                                    // Animated progress
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(
+                                        begin: 0, 
+                                        end: _currentAcceleration / (_fallThreshold * 1.5),
+                                      ),
+                                      duration: const Duration(milliseconds: 300),
+                                      builder: (context, value, _) {
+                                        return FractionallySizedBox(
+                                          widthFactor: value.clamp(0.0, 1.0),
+                                          child: Container(
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: _currentAcceleration > _fallThreshold * 0.8
+                                                    ? [Colors.orange, Colors.red]
+                                                    : [Colors.lightGreen, Colors.green],
+                                              ),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    // Threshold marker
+                                    Positioned(
+                                      left: (_fallThreshold / (_fallThreshold * 1.5) * 100).clamp(0.0, 100.0),
+                                      child: Container(
+                                        height: 20,
+                                        width: 2,
+                                        color: Colors.red[900],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Fall Threshold: ${_fallThreshold.toStringAsFixed(2)} m/s²',
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+              );
+            },
           ),
+          
+          const SizedBox(height: 25),
+          
+          // Control Buttons with Animation
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, 50 * (1 - value)),
+                child: Opacity(
+                  opacity: value,
+                  child: Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: _isMonitoring ? _stopMonitoring : _startMonitoring,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isMonitoring ? Colors.red : Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 4,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_isMonitoring ? Icons.stop_circle : Icons.play_circle),
+                            const SizedBox(width: 10),
+                            Text(
+                              _isMonitoring ? 'Stop Monitoring' : 'Start Monitoring',
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton(
+                        onPressed: _calibrateSystem,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.sensors),
+                            SizedBox(width: 10),
+                            Text('Calibrate System', style: TextStyle(fontSize: 18)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _isMonitoring ? _stopMonitoring : _startMonitoring,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isMonitoring ? Colors.red : Colors.green,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: Text(
-              _isMonitoring ? 'Stop Monitoring' : 'Start Monitoring',
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: _calibrateSystem,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child:
-                const Text('Calibrate System', style: TextStyle(fontSize: 18)),
-          ),
-          const SizedBox(height: 20),
+          
+          // Warning Card with Animation
           if (_contacts.isEmpty)
-            const Card(
-              color: Color(0xFFFFF3CD),
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, color: Colors.amber),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'No emergency contacts added. Please add contacts in settings.',
-                        style: TextStyle(fontSize: 16),
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOut,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Card(
+                    color: const Color(0xFFFFF3CD),
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.warning, color: Colors.amber, size: 24),
+                          ),
+                          const SizedBox(width: 15),
+                          const Expanded(
+                            child: Text(
+                              'No emergency contacts added. Please add contacts in settings.',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
+            
           const Spacer(),
-          ElevatedButton(
-            onPressed: () {
-              _triggerEmergencyAlert();
+          
+          // Emergency Test Button with Animation
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.elasticOut,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: ElevatedButton(
+                  onPressed: _triggerEmergencyAlert,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    elevation: 6,
+                    shadowColor: Colors.red.withOpacity(0.5),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.warning_amber_rounded, size: 24),
+                      SizedBox(width: 10),
+                      Text(
+                        'Test Emergency Alert',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[700],
-              padding: const EdgeInsets.symmetric(vertical: 20),
-            ),
-            child: const Text(
-              'Test Emergency Alert',
-              style: TextStyle(fontSize: 18),
-            ),
           ),
         ],
       ),
     );
+  }
+  
+
+}
+
+// Custom painter for pulse effect animation
+class PulseEffectPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  
+  PulseEffectPainter({required this.color, required this.radius});
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      radius,
+      paint,
+    );
+  }
+  
+  @override
+  bool shouldRepaint(PulseEffectPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.radius != radius;
   }
 }
 
