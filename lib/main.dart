@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Position? _currentPosition;
   Timer? _calibrationTimer;
   Timer? _backgroundTimer;
-  
+
   // Sensor data for fall detection algorithm
   final List<double> _accelerationMagnitudes = [];
   final int _windowSize = 20; // Sample window size
@@ -170,7 +170,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Ensure sensors are still active
   void _checkSensorsActive() {
-    if (_isMonitoring && (_accelerometerSubscription == null || _gyroscopeSubscription == null)) {
+    if (_isMonitoring &&
+        (_accelerometerSubscription == null ||
+            _gyroscopeSubscription == null)) {
       _startMonitoring();
     }
   }
@@ -259,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final double y = event.y;
         final double z = event.z;
         final double magnitude = sqrt(x * x + y * y + z * z);
-        
+
         if (_accelerationMagnitudes.length < 100) {
           _accelerationMagnitudes.add(magnitude);
         }
@@ -285,24 +287,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       for (var magnitude in _accelerationMagnitudes) {
         sumSquaredDiff += pow(magnitude - _meanRestingAcceleration, 2);
       }
-      _stdDevRestingAcceleration = 
+      _stdDevRestingAcceleration =
           sqrt(sumSquaredDiff / _accelerationMagnitudes.length);
     }
 
     // Set threshold to be mean + 3 * stdDev (covers 99.7% of normal activity)
-    _fallThreshold = _meanRestingAcceleration + 
-        (3 * _stdDevRestingAcceleration) + 5.0; // Add safety margin
+    _fallThreshold = _meanRestingAcceleration +
+        (3 * _stdDevRestingAcceleration) +
+        5.0; // Add safety margin
 
     // Save the calibrated threshold
     _saveUserData();
-    
+
     // Clean up calibration subscription
     _accelerometerSubscription?.cancel();
-    
+
     // Show calibration results
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Calibration complete. Fall threshold: ${_fallThreshold.toStringAsFixed(2)}'),
+        content: Text(
+            'Calibration complete. Fall threshold: ${_fallThreshold.toStringAsFixed(2)}'),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -321,11 +325,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final double y = event.y;
       final double z = event.z;
       final double magnitude = sqrt(x * x + y * y + z * z);
-      
+
       setState(() {
         _currentAcceleration = magnitude;
       });
-      
+
       // Detect falls using the threshold
       if (magnitude > _fallThreshold) {
         _verifyFallWithGyroscope();
@@ -348,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _accelerometerSubscription?.cancel();
     _accelerometerSubscription = null;
-    
+
     _gyroscopeSubscription?.cancel();
     _gyroscopeSubscription = null;
 
@@ -377,57 +381,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       barrierDismissible: false,
       builder: (BuildContext context) {
         int countDown = 15;
-        
-        return StatefulBuilder(
-          builder: (context, setState) {
-            // Start countdown
-            Timer.periodic(const Duration(seconds: 1), (timer) {
-              if (countDown > 0) {
-                setState(() {
-                  countDown--;
-                });
-              } else {
-                timer.cancel();
-                Navigator.of(context).pop();
-                _sendEmergencyAlerts();
-              }
-            });
-            
-            return AlertDialog(
-              title: const Text('Fall Detected!'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Are you okay? Emergency alerts will be sent in:'),
-                  const SizedBox(height: 10),
-                  Text(
-                    '$countDown seconds',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+
+        return StatefulBuilder(builder: (context, setState) {
+          // Start countdown
+          Timer.periodic(const Duration(seconds: 1), (timer) {
+            if (countDown > 0) {
+              setState(() {
+                countDown--;
+              });
+            } else {
+              timer.cancel();
+              Navigator.of(context).pop();
+              _sendEmergencyAlerts();
+            }
+          });
+
+          return AlertDialog(
+            title: const Text('Fall Detected!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Are you okay? Emergency alerts will be sent in:'),
+                const SizedBox(height: 10),
+                Text(
+                  '$countDown seconds',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('I\'m OK', style: TextStyle(fontSize: 18)),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                TextButton(
-                  child: const Text('Send Alert Now', 
-                    style: TextStyle(fontSize: 18, color: Colors.red)),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _sendEmergencyAlerts();
-                  },
                 ),
               ],
-            );
-          }
-        );
+            ),
+            actions: [
+              TextButton(
+                child: const Text('I\'m OK', style: TextStyle(fontSize: 18)),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Send Alert Now',
+                    style: TextStyle(fontSize: 18, color: Colors.red)),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _sendEmergencyAlerts();
+                },
+              ),
+            ],
+          );
+        });
       },
     );
   }
@@ -436,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Get location
     String locationStr = 'Unknown location';
     if (_currentPosition != null) {
-      locationStr = 
+      locationStr =
           'https://maps.google.com/?q=${_currentPosition!.latitude},${_currentPosition!.longitude}';
     }
 
@@ -447,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // 1. Send SMS to emergency contacts
     // 2. Initiate automatic call to emergency services
     // 3. Start recording audio for emergency responders
-    
+
     // For demo purposes, show what would be sent
     showDialog(
       context: context,
@@ -459,15 +461,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               const Text('Alert sent to emergency contacts:'),
               const SizedBox(height: 10),
-              Text(_contacts.isEmpty 
-                  ? 'No contacts configured' 
+              Text(_contacts.isEmpty
+                  ? 'No contacts configured'
                   : _contacts.join(', ')),
               const SizedBox(height: 15),
               const Text('Message sent:'),
               const SizedBox(height: 5),
               Text(
                 'EMERGENCY: $_userName may have fallen and needs help. ' +
-                'Location: $locationStr',
+                    'Location: $locationStr',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
@@ -516,9 +518,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: _isCalibrating
-          ? _buildCalibrationView()
-          : _buildMonitoringView(),
+      body: _isCalibrating ? _buildCalibrationView() : _buildMonitoringView(),
     );
   }
 
@@ -540,9 +540,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 30),
           CircularProgressIndicator(
-            value: (_countdownSeconds > 0)
-                ? (3 - _countdownSeconds) / 3
-                : null,
+            value: (_countdownSeconds > 0) ? (3 - _countdownSeconds) / 3 : null,
           ),
         ],
       ),
@@ -630,7 +628,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: const Text('Calibrate System', style: TextStyle(fontSize: 18)),
+            child:
+                const Text('Calibrate System', style: TextStyle(fontSize: 18)),
           ),
           const SizedBox(height: 20),
           if (_contacts.isEmpty)
