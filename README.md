@@ -3,7 +3,7 @@
 **A Flutter application designed for fall detection and sending emergency alerts.** 🆘
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
+[![License](https://img.shields.io/badge/License-BSD-blue.svg)]()
 [![Flutter Version](https://img.shields.io/badge/Flutter-%3E%3D2.17.0-blue)](https://flutter.dev)
 [![GitHub issues](https://img.shields.io/github/issues/YourUsername/ResQReact)](https://github.com/itsabhinavism/ResQReact/issues) 
 [![GitHub stars](https://img.shields.io/github/stars/itsabhinavism/ResQReact)](https://github.com/itsabhinavism/ResQReact/stargazers)
