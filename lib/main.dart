@@ -117,7 +117,8 @@ class _ResQReactAppState extends State<ResQReactApp> {
           ),
         ),
       ),
-      home: SplashScreen(setThemeMode: setThemeMode, currentThemeMode: _themeMode),
+      home: SplashScreen(
+          setThemeMode: setThemeMode, currentThemeMode: _themeMode),
     );
   }
 }
@@ -125,8 +126,9 @@ class _ResQReactAppState extends State<ResQReactApp> {
 class SplashScreen extends StatefulWidget {
   final Function(ThemeMode)? setThemeMode;
   final ThemeMode? currentThemeMode;
-  
-  const SplashScreen({Key? key, this.setThemeMode, this.currentThemeMode}) : super(key: key);
+
+  const SplashScreen({Key? key, this.setThemeMode, this.currentThemeMode})
+      : super(key: key);
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -310,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   double _currentAcceleration = 0.0;
   double _meanRestingAcceleration = 9.8; // Initial value (earth's gravity)
   double _stdDevRestingAcceleration = 1.0; // Initial standard deviation
-  
+
   // SMS frequency settings
   int _smsCount = 3; // Default to 3 SMS messages
   int _smsIntervalMinutes = 5; // Default to 5 minute intervals
@@ -360,48 +362,182 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _requestPermissions() async {
-    // Request each permission individually and check status
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.location,
-      Permission.sms,
-      Permission.microphone,
-    ].request();
-    
-    // Check if any permissions were denied
-    bool anyDenied = false;
-    statuses.forEach((permission, status) {
-      if (!status.isGranted) {
-        anyDenied = true;
-        debugPrint('Permission ${permission.toString()} denied: ${status.toString()}');
-      }
-    });
-    
-    // Show dialog if any permissions were denied
-    if (anyDenied && mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Permissions Required'),
-          content: const Text(
-            'ResQReact needs location and SMS permissions to send emergency alerts. '
-            'Please grant these permissions for the app to function properly.'
+    // Check current permission status first
+    PermissionStatus locationStatus = await Permission.location.status;
+    PermissionStatus smsStatus = await Permission.sms.status;
+    PermissionStatus microphoneStatus = await Permission.microphone.status;
+
+    // Show a more detailed dialog explaining why permissions are needed
+    if (!locationStatus.isGranted ||
+        !smsStatus.isGranted ||
+        !microphoneStatus.isGranted) {
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Important Permissions Required'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ResQReact needs the following permissions to function properly:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                _buildPermissionExplanation(
+                  'Location',
+                  'To send your exact location in emergency alerts',
+                  Icons.location_on,
+                  locationStatus.isGranted,
+                ),
+                const SizedBox(height: 8),
+                _buildPermissionExplanation(
+                  'SMS',
+                  'To send emergency messages to your contacts',
+                  Icons.sms,
+                  smsStatus.isGranted,
+                ),
+                const SizedBox(height: 8),
+                _buildPermissionExplanation(
+                  'Microphone',
+                  'For voice commands during emergencies',
+                  Icons.mic,
+                  microphoneStatus.isGranted,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Later'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  // Request permissions after explanation
+                  await _requestEachPermission();
+                },
+                child: const Text('Grant Permissions'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                openAppSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
-          ],
-        ),
-      );
+        );
+      }
+    } else {
+      // All permissions already granted
+      debugPrint('All required permissions already granted');
     }
+  }
+
+  // Helper widget to show permission explanation with status
+  Widget _buildPermissionExplanation(
+      String title, String description, IconData icon, bool isGranted) {
+    return Row(
+      children: [
+        Icon(icon, color: isGranted ? Colors.green : Colors.red),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(description, style: const TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+        Icon(
+          isGranted ? Icons.check_circle : Icons.error,
+          color: isGranted ? Colors.green : Colors.red,
+          size: 20,
+        ),
+      ],
+    );
+  }
+
+  // Request each permission individually with proper handling
+  Future<void> _requestEachPermission() async {
+    // Request location permission
+    PermissionStatus locationStatus = await Permission.location.request();
+    if (!locationStatus.isGranted && mounted) {
+      _showPermissionDeniedDialog('Location');
+    }
+
+    // Request SMS permission
+    PermissionStatus smsStatus = await Permission.sms.request();
+    if (!smsStatus.isGranted && mounted) {
+      _showPermissionDeniedDialog('SMS');
+    }
+
+    // Request microphone permission
+    PermissionStatus microphoneStatus = await Permission.microphone.request();
+    if (!microphoneStatus.isGranted && mounted) {
+      _showPermissionDeniedDialog('Microphone');
+    }
+
+    // Check if any permission is permanently denied and show settings option
+    if ((locationStatus.isPermanentlyDenied ||
+            smsStatus.isPermanentlyDenied ||
+            microphoneStatus.isPermanentlyDenied) &&
+        mounted) {
+      _showOpenSettingsDialog();
+    }
+  }
+
+  // Show dialog for individual permission denial
+  void _showPermissionDeniedDialog(String permissionName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('$permissionName Permission Required'),
+        content: Text(
+            '$permissionName permission is needed for the app to function properly.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show dialog to open settings for permanently denied permissions
+  void _showOpenSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permissions Required'),
+        content: const Text(
+          'Some permissions have been permanently denied. Please open settings and enable them manually.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -591,7 +727,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  
   void _triggerEmergencyAlert() {
     // Show alert dialog with countdown
     showDialog(
@@ -605,18 +740,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // Start the countdown immediately when dialog shows
           if (countdownTimer == null) {
             // Use exact 1000ms interval for accurate 15-second countdown
-            countdownTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+            countdownTimer =
+                Timer.periodic(const Duration(milliseconds: 1000), (timer) {
               if (countDown > 0) {
                 setDialogState(() {
                   countDown--;
                 });
               } else {
                 timer.cancel();
-                Navigator.of(dialogContext).pop(true); // Return true to indicate sending alerts
+                Navigator.of(dialogContext)
+                    .pop(true); // Return true to indicate sending alerts
               }
             });
           }
-          
+
           return WillPopScope(
             onWillPop: () async => false, // Prevent back button from dismissing
             child: AlertDialog(
@@ -637,10 +774,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 20),
                   Text(
                     'Sending alerts in: $countDown seconds',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
-                  Text('Will send $_smsCount SMS messages\nevery $_smsIntervalMinutes minutes'),
+                  Text(
+                      'Will send $_smsCount SMS messages\nevery $_smsIntervalMinutes minutes'),
                 ],
               ),
               actions: [
@@ -651,7 +790,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   onPressed: () {
                     countdownTimer?.cancel();
-                    Navigator.of(dialogContext).pop(true); // Send alerts immediately
+                    Navigator.of(dialogContext)
+                        .pop(true); // Send alerts immediately
                   },
                   child: const Text('Send Alerts Now'),
                 ),
@@ -685,11 +825,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Show confirmation notification
     NotificationManager.showEmergencyAlert();
-    
+
     // Create the emergency message
-    final String emergencyMessage = 'EMERGENCY: $_userName may have fallen and needs help. ' +
-        'Location: $locationStr';
-    
+    final String emergencyMessage =
+        'EMERGENCY: $_userName may have fallen and needs help. ' +
+            'Location: $locationStr';
+
     // Schedule multiple SMS messages based on user settings
     _scheduleSmsMessages(emergencyMessage);
 
@@ -736,18 +877,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _scheduleSmsMessages(String message) {
     // For demo purposes, just log the message
-    debugPrint('Scheduling $_smsCount SMS messages with $_smsIntervalMinutes minute intervals');
+    debugPrint(
+        'Scheduling $_smsCount SMS messages with $_smsIntervalMinutes minute intervals');
     for (int i = 0; i < _smsCount; i++) {
-      debugPrint('Scheduling message ${i+1}: $message');
+      debugPrint('Scheduling message ${i + 1}: $message');
       // In a real app, you would use a background service or WorkManager
       // to schedule these messages even if the app is closed
       Future.delayed(Duration(minutes: i * _smsIntervalMinutes), () {
         // Here you would actually send the SMS using a plugin like flutter_sms
-        debugPrint('Sending emergency SMS ${i+1} of $_smsCount');
+        debugPrint('Sending emergency SMS ${i + 1} of $_smsCount');
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -766,9 +908,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               final newThemeMode = currentTheme == Brightness.dark
                   ? ThemeMode.light
                   : ThemeMode.dark;
-              
+
               // Find the ResQReactApp ancestor and update its theme
-              final appState = context.findAncestorStateOfType<_ResQReactAppState>();
+              final appState =
+                  context.findAncestorStateOfType<_ResQReactAppState>();
               if (appState != null) {
                 appState.setThemeMode(newThemeMode);
               }
@@ -786,7 +929,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     fallThreshold: _fallThreshold,
                     smsCount: _smsCount,
                     smsIntervalMinutes: _smsIntervalMinutes,
-                    onSettingsChanged: (name, contacts, threshold, smsCount, smsInterval) {
+                    onSettingsChanged:
+                        (name, contacts, threshold, smsCount, smsInterval) {
                       setState(() {
                         _userName = name;
                         _contacts = contacts;
@@ -838,6 +982,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Permissions Status Card
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.security, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'App Permissions',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.settings),
+                        label: const Text('Manage'),
+                        onPressed: () => _requestPermissions(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Make sure all permissions are granted for full functionality',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           // Status Card with Animation
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0.8, end: 1.0),
@@ -1112,8 +1298,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 return Opacity(
                   opacity: value,
                   child: Card(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2)
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context)
+                            .colorScheme
+                            .surfaceVariant
+                            .withOpacity(0.2)
                         : Theme.of(context).colorScheme.surfaceVariant,
                     elevation: 3,
                     shape: RoundedRectangleBorder(
@@ -1125,9 +1314,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.amber.shade900.withOpacity(0.3)
-                                : Colors.amber.withOpacity(0.3),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.amber.shade900.withOpacity(0.3)
+                                  : Colors.amber.withOpacity(0.3),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.warning,
