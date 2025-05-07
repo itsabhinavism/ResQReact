@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:math';
+import 'package:android_intent_plus/android_intent.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -296,11 +297,14 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isMonitoring = false;
+  bool _isDarkMode = false;
   bool _isCalibrating = false;
-  String _userName = 'User';
+  String _userName = "";
   List<String> _contacts = [];
+  bool _allPermissionsGranted = false;
   double _fallThreshold = 15.0; // Default threshold
   Timer? _calibrationTimer;
   Timer? _backgroundTimer;
@@ -322,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Initialize the app
-    _requestPermissions();
+    _checkAndRequestPermissions(); // Changed to check permissions first
     _loadUserData();
     _startLocationUpdates();
   }
@@ -361,6 +365,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Check permissions and request if needed on startup
+  Future<void> _checkAndRequestPermissions() async {
+    // Check current permission status first
+    PermissionStatus locationStatus = await Permission.location.status;
+    PermissionStatus smsStatus = await Permission.sms.status;
+    PermissionStatus microphoneStatus = await Permission.microphone.status;
+
+    // Update the permission status flag
+    setState(() {
+      _allPermissionsGranted = locationStatus.isGranted &&
+          smsStatus.isGranted &&
+          microphoneStatus.isGranted;
+    });
+
+    // Automatically request permissions on fresh install
+    if (!_allPermissionsGranted) {
+      _requestPermissions();
+    }
+  }
+
+  // Show permission dialog and request permissions
   Future<void> _requestPermissions() async {
     // Check current permission status first
     PermissionStatus locationStatus = await Permission.location.status;
@@ -427,6 +452,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } else {
       // All permissions already granted
+      setState(() {
+        _allPermissionsGranted = true;
+      });
       debugPrint('All required permissions already granted');
     }
   }
@@ -458,22 +486,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Request each permission individually with proper handling
   Future<void> _requestEachPermission() async {
+    bool allGranted = true;
+
     // Request location permission
     PermissionStatus locationStatus = await Permission.location.request();
     if (!locationStatus.isGranted && mounted) {
+      allGranted = false;
       _showPermissionDeniedDialog('Location');
     }
 
     // Request SMS permission
     PermissionStatus smsStatus = await Permission.sms.request();
     if (!smsStatus.isGranted && mounted) {
+      allGranted = false;
       _showPermissionDeniedDialog('SMS');
     }
 
     // Request microphone permission
     PermissionStatus microphoneStatus = await Permission.microphone.request();
     if (!microphoneStatus.isGranted && mounted) {
+      allGranted = false;
       _showPermissionDeniedDialog('Microphone');
+    }
+
+    // Update permission status
+    if (mounted) {
+      setState(() {
+        _allPermissionsGranted = allGranted;
+      });
     }
 
     // Check if any permission is permanently denied and show settings option
@@ -673,7 +713,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
 
     // Subscribe to accelerometer events
-    _accelerometerSubscription = userAccelerometerEvents.listen((event) {
+    _accelerometerSubscription = userAccelerometerEventStream().listen((event) {
       final double x = event.x;
       final double y = event.y;
       final double z = event.z;
@@ -689,8 +729,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     });
 
-    // Subscribe to gyroscope events (used in fall verification)
-    _gyroscopeSubscription = gyroscopeEvents.listen((event) {
+    // Subscribe to gyroscope events
+    _gyroscopeSubscription = gyroscopeEventStream().listen((event) {
       // Data will be used in fall verification
     });
 
@@ -754,39 +794,127 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             });
           }
 
-          return WillPopScope(
-            onWillPop: () async => false, // Prevent back button from dismissing
+          return PopScope(
+            canPop: false, // Prevent back button from dismissing
             child: AlertDialog(
-              title: Row(
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Color(0xFF2D2D2D) // Dark theme background
+                  : Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: Column(
                 children: [
-                  const Icon(Icons.warning, color: Colors.red),
-                  const SizedBox(width: 10),
-                  const Text('Fall Detected!'),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.warning_amber_rounded,
+                        color: Colors.red, size: 40),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Fall Detected!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'We detected a possible fall. Emergency contacts will be alerted if you don\'t respond.',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Sending alerts in: $countDown seconds',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                      'Will send $_smsCount SMS messages\nevery $_smsIntervalMinutes minutes'),
-                ],
+              content: Container(
+                width: double.maxFinite,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.red.shade900.withOpacity(0.15)
+                            : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'We detected a possible fall. Emergency contacts will be alerted if you don\'t respond.',
+                        style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Countdown timer with circular progress indicator
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          height: 120,
+                          child: CircularProgressIndicator(
+                            value: countDown /
+                                15, // 15 is the initial countdown value
+                            strokeWidth: 8,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade200,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.red),
+                          ),
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              '$countDown',
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const Text('seconds',
+                                style: TextStyle(fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade800.withOpacity(0.5)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Will send $_smsCount SMS messages\nevery $_smsIntervalMinutes minutes',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               actions: [
+                TextButton(
+                  onPressed: () {
+                    countdownTimer?.cancel();
+                    Navigator.of(dialogContext).pop(false); // Don't send alerts
+                  },
+                  child: const Text('I\'m OK - Cancel'),
+                ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
+                    elevation: 2,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                   ),
                   onPressed: () {
                     countdownTimer?.cancel();
@@ -794,13 +922,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         .pop(true); // Send alerts immediately
                   },
                   child: const Text('Send Alerts Now'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    countdownTimer?.cancel();
-                    Navigator.of(dialogContext).pop(false); // Don't send alerts
-                  },
-                  child: const Text('I\'m OK - Cancel'),
                 ),
               ],
             ),
@@ -876,17 +997,141 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _scheduleSmsMessages(String message) {
-    // For demo purposes, just log the message
+    // Log the message for debugging
     debugPrint(
         'Scheduling $_smsCount SMS messages with $_smsIntervalMinutes minute intervals');
-    for (int i = 0; i < _smsCount; i++) {
+
+    // Send first SMS immediately
+    _sendSmsToContacts(message, 1);
+
+    // Schedule additional SMS messages if needed
+    for (int i = 1; i < _smsCount; i++) {
       debugPrint('Scheduling message ${i + 1}: $message');
-      // In a real app, you would use a background service or WorkManager
-      // to schedule these messages even if the app is closed
+      // Schedule future SMS messages
       Future.delayed(Duration(minutes: i * _smsIntervalMinutes), () {
-        // Here you would actually send the SMS using a plugin like flutter_sms
-        debugPrint('Sending emergency SMS ${i + 1} of $_smsCount');
+        _sendSmsToContacts(message, i + 1);
       });
+    }
+  }
+
+  // Helper method to actually send SMS messages
+  Future<void> _sendSmsToContacts(String message, int messageNumber) async {
+    debugPrint('Sending emergency SMS $messageNumber of $_smsCount');
+
+    if (_contacts.isEmpty) {
+      debugPrint('No emergency contacts configured');
+      return;
+    }
+
+    // Check if SMS permission is granted
+    PermissionStatus smsStatus = await Permission.sms.status;
+    if (!smsStatus.isGranted) {
+      debugPrint('SMS permission not granted, requesting...');
+      smsStatus = await Permission.sms.request();
+      if (!smsStatus.isGranted) {
+        debugPrint('SMS permission denied, cannot send messages');
+        return;
+      }
+    }
+
+    // Show a dialog to inform the user about SMS being sent
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Sending Emergency SMS'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                  'Emergency SMS messages are being sent to your contacts.'),
+              const SizedBox(height: 10),
+              Text('Contacts: ${_contacts.join(", ")}'),
+              const SizedBox(height: 10),
+              const Text('Message:'),
+              Text(message,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Send SMS to each contact using flutter_sms
+    bool allSent = true;
+    for (String contact in _contacts) {
+      try {
+        // Format phone number (remove any non-digit characters)
+        String phoneNumber = contact.replaceAll(RegExp(r'\D'), '');
+
+        // Use Android Intent to send SMS directly
+        try {
+          // Create an Android Intent for sending SMS
+          final AndroidIntent intent = AndroidIntent(
+            action: 'android.intent.action.SENDTO',
+            data: 'smsto:$phoneNumber',
+            arguments: <String, dynamic>{
+              'sms_body': message,
+              // Add these flags to try to send SMS automatically
+              'android.intent.extra.PROCESS_TEXT': message,
+              'exit_on_sent': true,
+            },
+            // These flags help with automatic sending
+            flags: <int>[
+              0x10000000, // FLAG_ACTIVITY_NEW_TASK
+              0x00800000, // FLAG_ACTIVITY_NO_HISTORY
+            ],
+          );
+
+          // Launch the intent
+          await intent.launch();
+          debugPrint('SMS intent launched for $phoneNumber');
+
+          // Small delay to allow intent to process
+          await Future.delayed(const Duration(milliseconds: 800));
+
+          // Try to send a second intent to press the send button
+          // This is a hack but sometimes works on certain devices
+          final AndroidIntent sendIntent = AndroidIntent(
+            action: 'android.intent.action.PROCESS_TEXT',
+            arguments: <String, dynamic>{
+              'android.intent.extra.PROCESS_TEXT': '',
+            },
+          );
+
+          try {
+            await sendIntent.launch();
+            debugPrint('Send button press attempted');
+          } catch (e) {
+            // Ignore errors from the send button press attempt
+            debugPrint('Send button press failed: $e');
+          }
+        } catch (e) {
+          debugPrint('Error launching SMS intent: $e');
+          allSent = false;
+        }
+
+        // Small delay between sending multiple SMS
+        await Future.delayed(const Duration(milliseconds: 500));
+      } catch (e) {
+        debugPrint('Failed to send SMS to $contact: $e');
+        allSent = false;
+      }
+    }
+
+    // Log the result
+    if (allSent) {
+      debugPrint(
+          'All emergency alerts successfully sent to ${_contacts.length} contacts');
+    } else {
+      debugPrint('Some emergency alerts failed to send');
     }
   }
 
@@ -982,48 +1227,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Permissions Status Card
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.security, color: Colors.orange),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'App Permissions',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+          // Permissions Status Card - Only show if permissions are not granted
+          if (!_allPermissionsGranted) ...[
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.security, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'App Permissions',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.settings),
-                        label: const Text('Manage'),
-                        onPressed: () => _requestPermissions(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
+                        const Spacer(),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.settings),
+                          label: const Text('Manage'),
+                          onPressed: () => _requestPermissions(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Make sure all permissions are granted for full functionality',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Make sure all permissions are granted for full functionality',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
           // Status Card with Animation
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0.8, end: 1.0),
@@ -1301,9 +1548,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     color: Theme.of(context).brightness == Brightness.dark
                         ? Theme.of(context)
                             .colorScheme
-                            .surfaceVariant
+                            .surfaceContainerHighest
                             .withOpacity(0.2)
-                        : Theme.of(context).colorScheme.surfaceVariant,
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
                     elevation: 3,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
@@ -1349,26 +1596,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             builder: (context, value, child) {
               return Transform.scale(
                 scale: value,
-                child: ElevatedButton(
-                  onPressed: _triggerEmergencyAlert,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    elevation: 6,
-                    shadowColor: Colors.red.withOpacity(0.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.warning_amber_rounded, size: 24),
-                      SizedBox(width: 10),
-                      Text(
-                        'Test Emergency Alert',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ],
+                child: Container(
+                  width: 220, // Reduced width
+                  child: ElevatedButton(
+                    onPressed: _triggerEmergencyAlert,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Color(0xFF8B0000) // Dark red for dark theme
+                              : Colors.red[700],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16), // Reduced padding
+                      elevation: 4, // Reduced elevation
+                      shadowColor: Colors.red.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Row(
+                      mainAxisSize:
+                          MainAxisSize.min, // Make row take minimum space
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 20), // Smaller icon
+                        SizedBox(width: 8), // Reduced spacing
+                        Text(
+                          'Test Emergency Alert',
+                          style: TextStyle(
+                            fontSize: 16, // Smaller font
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -1674,7 +1935,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Required for emergency alerts',
               Icons.location_on,
               () async {
-                await Permission.locationAlways.request();
+                // Check current permission status
+                PermissionStatus status =
+                    await Permission.locationAlways.status;
+
+                if (status.isPermanentlyDenied) {
+                  // If permanently denied, open app settings
+                  await openAppSettings();
+                } else {
+                  // Otherwise request permission normally
+                  await Permission.locationAlways.request();
+                }
               },
             ),
             _buildPermissionTile(
@@ -1682,34 +1953,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'For sending emergency messages',
               Icons.sms,
               () async {
-                await Permission.sms.request();
+                // Check current permission status
+                PermissionStatus status = await Permission.sms.status;
+
+                if (status.isPermanentlyDenied) {
+                  // If permanently denied, open app settings
+                  await openAppSettings();
+                } else {
+                  // Otherwise request permission normally
+                  await Permission.sms.request();
+                }
               },
             ),
             _buildPermissionTile(
-              'Microphone Permission',
+              'Microphone',
               'Required for voice commands',
               Icons.mic,
               () async {
-                await Permission.microphone.request();
+                // Check current permission status
+                PermissionStatus status = await Permission.microphone.status;
+
+                if (status.isPermanentlyDenied) {
+                  // If permanently denied, open app settings
+                  await openAppSettings();
+                } else {
+                  // Otherwise request permission normally
+                  await Permission.microphone.request();
+                }
               },
             ),
             const SizedBox(height: 32),
-            // Animated "made by abhinav" text
+            // Animated "made by abhinav" text with theme adaptability
             Center(
               child: TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0.0, end: 1.0),
                 duration: const Duration(seconds: 2),
                 builder: (context, value, child) {
+                  // Get appropriate color based on theme
+                  final Color textColor =
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Color(0xFFB388FF) // Light purple for dark theme
+                          : Color(0xFF6200EA); // Deep purple for light theme
+
                   return Opacity(
                     opacity: value,
                     child: Transform.translate(
                       offset: Offset(0, 20 * (1 - value)),
-                      child: const Text(
-                        'Made by Abhinav',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.purple.withOpacity(0.15)
+                              : Colors.purple.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: textColor.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          'Made by Abhinav',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),

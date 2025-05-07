@@ -15,6 +15,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
+    
+    // Suppress deprecation and unchecked warnings
+    tasks.withType<JavaCompile> {
+        options.compilerArgs.add("-Xlint:none")
+        options.compilerArgs.add("-Xlint:-deprecation")
+        options.compilerArgs.add("-Xlint:-unchecked")
+    }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()

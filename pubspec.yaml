@@ -24,6 +24,8 @@ dependencies:
   shimmer: ^3.0.0
   # Added for Android compatibility
   device_info_plus: ^9.1.1
+  # Android intent for direct SMS sending
+  android_intent_plus: ^4.0.3
 
 dev_dependencies:
   flutter_test:
