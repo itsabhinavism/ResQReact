@@ -16,15 +16,16 @@ class NotificationManager {
   static void showMonitoringActive() {
     // Enhanced notification message
     debugPrint('Monitoring active: ResQReact is actively monitoring for falls');
-    
+
     // Vibrate device to provide feedback
     _vibrate(pattern: [0, 100, 50, 100]);
   }
 
   static void showEmergencyAlert() {
     // Enhanced emergency alert message
-    debugPrint('EMERGENCY ALERT: Fall detected! Sending alerts to emergency contacts.');
-    
+    debugPrint(
+        'EMERGENCY ALERT: Fall detected! Sending alerts to emergency contacts.');
+
     // Vibrate device with emergency pattern
     _vibrate(pattern: [0, 500, 200, 500, 200, 500]);
   }
@@ -32,7 +33,7 @@ class NotificationManager {
   static void cancelNotification(int id) {
     debugPrint('Notification $id cancelled');
   }
-  
+
   // Helper method to vibrate the device
   static void _vibrate({required List<int> pattern}) {
     // This would use platform channels to trigger vibration
@@ -41,14 +42,28 @@ class NotificationManager {
   }
 }
 
-class ResQReactApp extends StatelessWidget {
+class ResQReactApp extends StatefulWidget {
   const ResQReactApp({Key? key}) : super(key: key);
+
+  @override
+  State<ResQReactApp> createState() => _ResQReactAppState();
+}
+
+class _ResQReactAppState extends State<ResQReactApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  void setThemeMode(ThemeMode themeMode) {
+    setState(() {
+      _themeMode = themeMode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ResQReact',
       debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.red,
@@ -64,12 +79,11 @@ class ResQReactApp extends StatelessWidget {
           elevation: 4,
           margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -103,34 +117,37 @@ class ResQReactApp extends StatelessWidget {
           ),
         ),
       ),
-      themeMode: ThemeMode.system,
-      home: const SplashScreen(),
+      home: SplashScreen(setThemeMode: setThemeMode, currentThemeMode: _themeMode),
     );
   }
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  final Function(ThemeMode)? setThemeMode;
+  final ThemeMode? currentThemeMode;
+  
+  const SplashScreen({Key? key, this.setThemeMode, this.currentThemeMode}) : super(key: key);
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Setup animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    
+
     _scaleAnimation = Tween<double>(
       begin: 0.5,
       end: 1.0,
@@ -138,7 +155,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       parent: _animationController,
       curve: Curves.elasticOut,
     ));
-    
+
     _opacityAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -146,23 +163,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       parent: _animationController,
       curve: Interval(0.3, 1.0, curve: Curves.easeIn),
     ));
-    
+
     // Start the animation
     _animationController.forward();
-    
+
     // Navigate to HomeScreen after animation completes
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const HomeScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             const begin = Offset(1.0, 0.0);
             const end = Offset.zero;
             const curve = Curves.easeInOutQuart;
-            
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+            var tween =
+                Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
             var offsetAnimation = animation.drive(tween);
-            
+
             return SlideTransition(position: offsetAnimation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 800),
@@ -170,7 +189,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       );
     });
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -181,6 +200,31 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.primary,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          // Theme toggle button
+          if (widget.setThemeMode != null)
+            IconButton(
+              icon: Icon(
+                widget.currentThemeMode == ThemeMode.dark
+                    ? Icons.light_mode
+                    : Icons.dark_mode,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                if (widget.setThemeMode != null) {
+                  widget.setThemeMode!(
+                    widget.currentThemeMode == ThemeMode.dark
+                        ? ThemeMode.light
+                        : ThemeMode.dark,
+                  );
+                }
+              },
+            ),
+        ],
+      ),
       body: Center(
         child: AnimatedBuilder(
           animation: _animationController,
@@ -207,16 +251,18 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     const SizedBox(height: 30),
                     Text(
                       'ResQReact',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 40,
-                            letterSpacing: 1.2,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 40,
+                                letterSpacing: 1.2,
+                              ),
                     ),
                     const SizedBox(height: 15),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(30),
@@ -251,27 +297,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isMonitoring = false;
   bool _isCalibrating = false;
-  int _countdownSeconds = 3;
-  List<String> _contacts = [];
   String _userName = 'User';
-  StreamSubscription<UserAccelerometerEvent>? _accelerometerSubscription;
-  StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
+  List<String> _contacts = [];
   double _fallThreshold = 15.0; // Default threshold
-  double _currentAcceleration = 0.0;
-  Position? _currentPosition;
   Timer? _calibrationTimer;
   Timer? _backgroundTimer;
-
-  // Sensor data for fall detection algorithm
-  final List<double> _accelerationMagnitudes = [];
-  final int _windowSize = 20; // Sample window size
+  List<double> _accelerationMagnitudes = [];
+  int _countdownSeconds = 3;
+  StreamSubscription<UserAccelerometerEvent>? _accelerometerSubscription;
+  StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
+  Position? _currentPosition;
+  double _currentAcceleration = 0.0;
   double _meanRestingAcceleration = 9.8; // Initial value (earth's gravity)
   double _stdDevRestingAcceleration = 1.0; // Initial standard deviation
+  
+  // SMS frequency settings
+  int _smsCount = 3; // Default to 3 SMS messages
+  int _smsIntervalMinutes = 5; // Default to 5 minute intervals
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Initialize the app
     _requestPermissions();
     _loadUserData();
     _startLocationUpdates();
@@ -282,6 +330,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _stopMonitoring();
     _backgroundTimer?.cancel();
+    _calibrationTimer?.cancel();
     super.dispose();
   }
 
@@ -311,13 +360,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _requestPermissions() async {
-    await [
+    // Request each permission individually and check status
+    Map<Permission, PermissionStatus> statuses = await [
       Permission.location,
-      Permission.locationAlways,
-      Permission.locationWhenInUse,
-      Permission.microphone,
       Permission.sms,
+      Permission.microphone,
     ].request();
+    
+    // Check if any permissions were denied
+    bool anyDenied = false;
+    statuses.forEach((permission, status) {
+      if (!status.isGranted) {
+        anyDenied = true;
+        debugPrint('Permission ${permission.toString()} denied: ${status.toString()}');
+      }
+    });
+    
+    // Show dialog if any permissions were denied
+    if (anyDenied && mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Permissions Required'),
+          content: const Text(
+            'ResQReact needs location and SMS permissions to send emergency alerts. '
+            'Please grant these permissions for the app to function properly.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -507,64 +591,88 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  
   void _triggerEmergencyAlert() {
     // Show alert dialog with countdown
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         int countDown = 15;
+        Timer? countdownTimer;
 
-        return StatefulBuilder(builder: (context, setState) {
-          // Start countdown
-          Timer.periodic(const Duration(seconds: 1), (timer) {
-            if (countDown > 0) {
-              setState(() {
-                countDown--;
-              });
-            } else {
-              timer.cancel();
-              Navigator.of(context).pop();
-              _sendEmergencyAlerts();
-            }
-          });
-
-          return AlertDialog(
-            title: const Text('Fall Detected!'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Are you okay? Emergency alerts will be sent in:'),
-                const SizedBox(height: 10),
-                Text(
-                  '$countDown seconds',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+        return StatefulBuilder(builder: (context, setDialogState) {
+          // Start the countdown immediately when dialog shows
+          if (countdownTimer == null) {
+            // Use exact 1000ms interval for accurate 15-second countdown
+            countdownTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+              if (countDown > 0) {
+                setDialogState(() {
+                  countDown--;
+                });
+              } else {
+                timer.cancel();
+                Navigator.of(dialogContext).pop(true); // Return true to indicate sending alerts
+              }
+            });
+          }
+          
+          return WillPopScope(
+            onWillPop: () async => false, // Prevent back button from dismissing
+            child: AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.warning, color: Colors.red),
+                  const SizedBox(width: 10),
+                  const Text('Fall Detected!'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'We detected a possible fall. Emergency contacts will be alerted if you don\'t respond.',
+                    style: TextStyle(fontSize: 16),
                   ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Sending alerts in: $countDown seconds',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Will send $_smsCount SMS messages\nevery $_smsIntervalMinutes minutes'),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    countdownTimer?.cancel();
+                    Navigator.of(dialogContext).pop(true); // Send alerts immediately
+                  },
+                  child: const Text('Send Alerts Now'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    countdownTimer?.cancel();
+                    Navigator.of(dialogContext).pop(false); // Don't send alerts
+                  },
+                  child: const Text('I\'m OK - Cancel'),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                child: const Text('I\'m OK', style: TextStyle(fontSize: 18)),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: const Text('Send Alert Now',
-                    style: TextStyle(fontSize: 18, color: Colors.red)),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _sendEmergencyAlerts();
-                },
-              ),
-            ],
           );
         });
       },
-    );
+    ).then((sendAlerts) {
+      // Only send alerts if the result is true
+      if (sendAlerts == true) {
+        _sendEmergencyAlerts();
+      }
+    });
   }
 
   void _sendEmergencyAlerts() {
@@ -577,11 +685,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Show confirmation notification
     NotificationManager.showEmergencyAlert();
-
-    // In a real app, you would:
-    // 1. Send SMS to emergency contacts
-    // 2. Initiate automatic call to emergency services
-    // 3. Start recording audio for emergency responders
+    
+    // Create the emergency message
+    final String emergencyMessage = 'EMERGENCY: $_userName may have fallen and needs help. ' +
+        'Location: $locationStr';
+    
+    // Schedule multiple SMS messages based on user settings
+    _scheduleSmsMessages(emergencyMessage);
 
     // For demo purposes, show what would be sent
     showDialog(
@@ -601,9 +711,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const Text('Message sent:'),
               const SizedBox(height: 5),
               Text(
-                'EMERGENCY: $_userName may have fallen and needs help. ' +
-                    'Location: $locationStr',
+                emergencyMessage,
                 style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                'Sending $_smsCount messages with $_smsIntervalMinutes minute intervals',
+                style: const TextStyle(fontStyle: FontStyle.italic),
               ),
             ],
           ),
@@ -620,12 +734,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _scheduleSmsMessages(String message) {
+    // For demo purposes, just log the message
+    debugPrint('Scheduling $_smsCount SMS messages with $_smsIntervalMinutes minute intervals');
+    for (int i = 0; i < _smsCount; i++) {
+      debugPrint('Scheduling message ${i+1}: $message');
+      // In a real app, you would use a background service or WorkManager
+      // to schedule these messages even if the app is closed
+      Future.delayed(Duration(minutes: i * _smsIntervalMinutes), () {
+        // Here you would actually send the SMS using a plugin like flutter_sms
+        debugPrint('Sending emergency SMS ${i+1} of $_smsCount');
+      });
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ResQReact'),
         actions: [
+          // Dark mode toggle
+          IconButton(
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+            onPressed: () {
+              final currentTheme = Theme.of(context).brightness;
+              final newThemeMode = currentTheme == Brightness.dark
+                  ? ThemeMode.light
+                  : ThemeMode.dark;
+              
+              // Find the ResQReactApp ancestor and update its theme
+              final appState = context.findAncestorStateOfType<_ResQReactAppState>();
+              if (appState != null) {
+                appState.setThemeMode(newThemeMode);
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -636,11 +784,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     userName: _userName,
                     contacts: _contacts,
                     fallThreshold: _fallThreshold,
-                    onSettingsChanged: (name, contacts, threshold) {
+                    smsCount: _smsCount,
+                    smsIntervalMinutes: _smsIntervalMinutes,
+                    onSettingsChanged: (name, contacts, threshold, smsCount, smsInterval) {
                       setState(() {
                         _userName = name;
                         _contacts = contacts;
                         _fallThreshold = threshold;
+                        _smsCount = smsCount;
+                        _smsIntervalMinutes = smsInterval;
                       });
                       _saveUserData();
                     },
@@ -696,8 +848,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 scale: value,
                 child: Card(
                   elevation: 8,
-                  shadowColor: _isMonitoring 
-                      ? Colors.green.withOpacity(0.4) 
+                  shadowColor: _isMonitoring
+                      ? Colors.green.withOpacity(0.4)
                       : Colors.red.withOpacity(0.4),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
@@ -711,18 +863,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             return Opacity(
                               opacity: opacity,
                               child: Text(
-                                _isMonitoring ? 'Monitoring Active' : 'Monitoring Inactive',
+                                _isMonitoring
+                                    ? 'Monitoring Active'
+                                    : 'Monitoring Inactive',
                                 style: TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
-                                  color: _isMonitoring ? Colors.green : Colors.red,
+                                  color:
+                                      _isMonitoring ? Colors.green : Colors.red,
                                 ),
                               ),
                             );
                           },
                         ),
                         const SizedBox(height: 20),
-                        
+
                         // Shield Icon with Animation
                         TweenAnimationBuilder<double>(
                           tween: Tween<double>(begin: 0.5, end: 1.0),
@@ -735,21 +890,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 alignment: Alignment.center,
                                 children: [
                                   Icon(
-                                    _isMonitoring ? Icons.shield : Icons.shield_outlined,
+                                    _isMonitoring
+                                        ? Icons.shield
+                                        : Icons.shield_outlined,
                                     size: 100,
-                                    color: _isMonitoring ? Colors.green : Colors.red,
+                                    color: _isMonitoring
+                                        ? Colors.green
+                                        : Colors.red,
                                   ),
                                   if (_isMonitoring)
                                     TweenAnimationBuilder<double>(
-                                      tween: Tween<double>(begin: 0.7, end: 1.3),
-                                      duration: const Duration(milliseconds: 1500),
+                                      tween:
+                                          Tween<double>(begin: 0.7, end: 1.3),
+                                      duration:
+                                          const Duration(milliseconds: 1500),
                                       curve: Curves.easeInOut,
                                       builder: (context, pulse, _) {
                                         return RepaintBoundary(
                                           child: CustomPaint(
                                             size: const Size(120, 120),
                                             painter: PulseEffectPainter(
-                                              color: Colors.green.withOpacity(0.3),
+                                              color:
+                                                  Colors.green.withOpacity(0.3),
                                               radius: 50 * pulse,
                                             ),
                                           ),
@@ -762,7 +924,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           },
                         ),
                         const SizedBox(height: 25),
-                        
+
                         // Acceleration Data with Animation
                         if (_isMonitoring)
                           AnimatedOpacity(
@@ -777,7 +939,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 const SizedBox(height: 8),
                                 TweenAnimationBuilder<double>(
                                   tween: Tween<double>(
-                                    begin: 0, 
+                                    begin: 0,
                                     end: _currentAcceleration,
                                   ),
                                   duration: const Duration(milliseconds: 300),
@@ -808,10 +970,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     // Animated progress
                                     TweenAnimationBuilder<double>(
                                       tween: Tween<double>(
-                                        begin: 0, 
-                                        end: _currentAcceleration / (_fallThreshold * 1.5),
+                                        begin: 0,
+                                        end: _currentAcceleration /
+                                            (_fallThreshold * 1.5),
                                       ),
-                                      duration: const Duration(milliseconds: 300),
+                                      duration:
+                                          const Duration(milliseconds: 300),
                                       builder: (context, value, _) {
                                         return FractionallySizedBox(
                                           widthFactor: value.clamp(0.0, 1.0),
@@ -819,11 +983,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             height: 12,
                                             decoration: BoxDecoration(
                                               gradient: LinearGradient(
-                                                colors: _currentAcceleration > _fallThreshold * 0.8
-                                                    ? [Colors.orange, Colors.red]
-                                                    : [Colors.lightGreen, Colors.green],
+                                                colors: _currentAcceleration >
+                                                        _fallThreshold * 0.8
+                                                    ? [
+                                                        Colors.orange,
+                                                        Colors.red
+                                                      ]
+                                                    : [
+                                                        Colors.lightGreen,
+                                                        Colors.green
+                                                      ],
                                               ),
-                                              borderRadius: BorderRadius.circular(6),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                             ),
                                           ),
                                         );
@@ -831,7 +1003,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ),
                                     // Threshold marker
                                     Positioned(
-                                      left: (_fallThreshold / (_fallThreshold * 1.5) * 100).clamp(0.0, 100.0),
+                                      left: (_fallThreshold /
+                                              (_fallThreshold * 1.5) *
+                                              100)
+                                          .clamp(0.0, 100.0),
                                       child: Container(
                                         height: 20,
                                         width: 2,
@@ -859,9 +1034,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               );
             },
           ),
-          
+
           const SizedBox(height: 25),
-          
+
           // Control Buttons with Animation
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: 1),
@@ -875,9 +1050,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Column(
                     children: [
                       ElevatedButton(
-                        onPressed: _isMonitoring ? _stopMonitoring : _startMonitoring,
+                        onPressed:
+                            _isMonitoring ? _stopMonitoring : _startMonitoring,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isMonitoring ? Colors.red : Colors.green,
+                          backgroundColor:
+                              _isMonitoring ? Colors.red : Colors.green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           elevation: 4,
@@ -885,10 +1062,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(_isMonitoring ? Icons.stop_circle : Icons.play_circle),
+                            Icon(_isMonitoring
+                                ? Icons.stop_circle
+                                : Icons.play_circle),
                             const SizedBox(width: 10),
                             Text(
-                              _isMonitoring ? 'Stop Monitoring' : 'Start Monitoring',
+                              _isMonitoring
+                                  ? 'Stop Monitoring'
+                                  : 'Start Monitoring',
                               style: const TextStyle(fontSize: 18),
                             ),
                           ],
@@ -899,14 +1080,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         onPressed: _calibrateSystem,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                          side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
                             Icon(Icons.sensors),
                             SizedBox(width: 10),
-                            Text('Calibrate System', style: TextStyle(fontSize: 18)),
+                            Text('Calibrate System',
+                                style: TextStyle(fontSize: 18)),
                           ],
                         ),
                       ),
@@ -916,9 +1099,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               );
             },
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Warning Card with Animation
           if (_contacts.isEmpty)
             TweenAnimationBuilder<double>(
@@ -929,9 +1112,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 return Opacity(
                   opacity: value,
                   child: Card(
-                    color: const Color(0xFFFFF3CD),
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2)
+                        : Theme.of(context).colorScheme.surfaceVariant,
                     elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
@@ -939,16 +1125,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.3),
+                              color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.amber.shade900.withOpacity(0.3)
+                                : Colors.amber.withOpacity(0.3),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.warning, color: Colors.amber, size: 24),
+                            child: const Icon(Icons.warning,
+                                color: Colors.amber, size: 24),
                           ),
                           const SizedBox(width: 15),
                           const Expanded(
                             child: Text(
                               'No emergency contacts added. Please add contacts in settings.',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ],
@@ -958,9 +1148,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 );
               },
             ),
-            
+
           const Spacer(),
-          
+
           // Emergency Test Button with Animation
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: 1),
@@ -985,7 +1175,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       SizedBox(width: 10),
                       Text(
                         'Test Emergency Alert',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -997,30 +1188,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
     );
   }
-  
-
 }
 
 // Custom painter for pulse effect animation
 class PulseEffectPainter extends CustomPainter {
   final Color color;
   final double radius;
-  
+
   PulseEffectPainter({required this.color, required this.radius});
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawCircle(
       Offset(size.width / 2, size.height / 2),
       radius,
       paint,
     );
   }
-  
+
   @override
   bool shouldRepaint(PulseEffectPainter oldDelegate) {
     return oldDelegate.color != color || oldDelegate.radius != radius;
@@ -1031,13 +1220,17 @@ class SettingsScreen extends StatefulWidget {
   final String userName;
   final List<String> contacts;
   final double fallThreshold;
-  final Function(String, List<String>, double) onSettingsChanged;
+  final int smsCount;
+  final int smsIntervalMinutes;
+  final Function(String, List<String>, double, int, int) onSettingsChanged;
 
   const SettingsScreen({
     Key? key,
     required this.userName,
     required this.contacts,
     required this.fallThreshold,
+    required this.smsCount,
+    required this.smsIntervalMinutes,
     required this.onSettingsChanged,
   }) : super(key: key);
 
@@ -1049,6 +1242,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _nameController;
   late List<String> _contacts;
   late double _fallThreshold;
+  late int _smsCount;
+  late int _smsIntervalMinutes;
   final TextEditingController _newContactController = TextEditingController();
 
   @override
@@ -1056,7 +1251,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.userName);
     _contacts = List.from(widget.contacts);
-    _fallThreshold = widget.fallThreshold;
+    // Ensure _fallThreshold is within the allowed range (8.0 to 25.0)
+    _fallThreshold = widget.fallThreshold.clamp(8.0, 25.0);
+    _smsCount = widget.smsCount;
+    _smsIntervalMinutes = widget.smsIntervalMinutes;
   }
 
   @override
@@ -1087,6 +1285,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _nameController.text.trim(),
       _contacts,
       _fallThreshold,
+      _smsCount,
+      _smsIntervalMinutes,
     );
     Navigator.of(context).pop();
   }
@@ -1208,6 +1408,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 32),
             const Text(
+              'SMS Alert Settings',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Number of SMS alerts to send',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: _smsCount.toDouble(),
+              min: 1,
+              max: 5,
+              divisions: 4,
+              label: _smsCount.toString(),
+              onChanged: (value) {
+                setState(() {
+                  _smsCount = value.toInt();
+                });
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                Text('1 SMS'),
+                Text('5 SMS'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Interval between SMS alerts (minutes)',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: _smsIntervalMinutes.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: _smsIntervalMinutes.toString(),
+              onChanged: (value) {
+                setState(() {
+                  _smsIntervalMinutes = value.toInt();
+                });
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                Text('1 min'),
+                Text('10 min'),
+              ],
+            ),
+            const SizedBox(height: 32),
+            const Text(
               'Permissions',
               style: TextStyle(
                 fontSize: 20,
@@ -1232,12 +1496,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             _buildPermissionTile(
-              'Microphone',
-              'For audio during emergencies',
+              'Microphone Permission',
+              'Required for voice commands',
               Icons.mic,
               () async {
                 await Permission.microphone.request();
               },
+            ),
+            const SizedBox(height: 32),
+            // Animated "made by abhinav" text
+            Center(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.0, end: 1.0),
+                duration: const Duration(seconds: 2),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                      offset: Offset(0, 20 * (1 - value)),
+                      child: const Text(
+                        'Made by Abhinav',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
